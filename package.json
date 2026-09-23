@@ -1,0 +1,20 @@
+{
+  "name": "tokencap-skill",
+  "version": "1.0.0",
+  "description": "TokenCap Agent Skill — Local-first codebase intelligence for AI coding agents",
+  "main": "SKILL.md",
+  "scripts": {
+    "test": "node test/skill.test.js"
+  },
+  "keywords": [
+    "antigravity",
+    "agent-skill",
+    "skills",
+    "tokencap",
+    "codebase-intelligence",
+    "claude-code",
+    "cursor"
+  ],
+  "author": "Vansh Arora <vansharora4903@gmail.com>",
+  "license": "MIT"
+}
