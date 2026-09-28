@@ -1,8 +1,14 @@
 {
   "name": "tokencap-skill",
-  "version": "1.0.0",
+  "version": "2.9.0",
   "description": "TokenCap Agent Skill — Local-first codebase intelligence for AI coding agents",
   "main": "SKILL.md",
+  "files": [
+    "SKILL.md",
+    "reference/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node test/skill.test.js"
   },

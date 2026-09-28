@@ -90,14 +90,17 @@ test("SKILL.md contains all standard agent skill sections", () => {
 // 2. Reference Guides Validation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("reference/commands.md exists and contains 7 core CLI verbs", () => {
+test("reference/commands.md documents the current seven-command surface", () => {
   assert.ok(fs.existsSync(COMMANDS_FILE), "reference/commands.md must exist");
   const content = fs.readFileSync(COMMANDS_FILE, "utf8");
-  
-  const coreVerbs = ["tokencap make", "tokencap ask", "tokencap impact", "tokencap analyze", "tokencap refactor", "tokencap serve", "tokencap update"];
+
+  const coreVerbs = ["tokencap make", "tokencap ask", "tokencap analyze", "tokencap serve", "tokencap update", "tokencap help", "tokencap version"];
   for (const verb of coreVerbs) {
     assert.ok(content.includes(verb), `commands.md must document '${verb}'`);
   }
+
+  assert.ok(!content.includes("tokencap make --force"), "commands.md must not document the retired --force flag");
+  assert.ok(content.includes("--mcp"), "commands.md must distinguish the MCP server from the default Companion bridge");
 });
 
 test("reference/workflows.md exists and contains standard agent workflows", () => {

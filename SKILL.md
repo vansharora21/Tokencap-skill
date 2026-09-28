@@ -1,438 +1,181 @@
 ---
 name: tokencap
-description: Generate and query local-first codebase intelligence for AI coding agents. Use when starting work on an unfamiliar codebase, when you need to understand project architecture, when reviewing changes for risk, when onboarding to a new project, when planning refactoring, or when an agent lacks project context.
+description: Generate and query local-first codebase intelligence for AI coding agents. Use when starting work on an unfamiliar codebase, understanding architecture, planning a change, reviewing risk, debugging dependencies, or preparing a session handoff.
 ---
 
-# TokenCap — Local-First Codebase Intelligence
+# TokenCap: Local-First Codebase Intelligence
 
 ## Overview
 
-TokenCap generates a compact, graph-ranked intelligence snapshot of any codebase. It gives AI agents immediate full project context — architecture, dependencies, risks, patterns — without re-discovering the codebase every session.
+TokenCap builds a compact, graph-ranked view of a repository before an agent starts exploring it. It keeps repository intelligence local and makes relevant architecture, dependencies, risks, rules, and recent changes available without repeatedly reading unrelated files.
 
-**The core insight:** AI agents waste tokens re-reading codebases from scratch. TokenCap pre-computes the intelligence once, stores it locally, and lets any agent load it instantly.
-
-**The four laws:**
-1. No network egress at runtime (everything stays local)
-2. No API keys, ever (no premium tier, no degraded free path)
-3. No build step (install and run)
-4. Auditable surface (small dependency tree)
+The four laws are: no runtime network egress, no API keys, no separate build step after installation, and an auditable dependency surface.
 
 ## When to Use
 
-- **Starting work on an unfamiliar codebase** — generate intelligence before writing code
-- **Reviewing a PR or commit** — analyze risk, impact, and test coverage gaps
-- **Onboarding a new team member** — provide instant project context
-- **Planning refactoring** — get graph-guided suggestions ranked by impact
-- **Debugging dependency issues** — trace transitive callers and blast radius
-- **Architecture review** — compare declared vs actual architecture
-- **Session handoff** — capture decisions and context for the next agent
+- Starting work in an unfamiliar repository.
+- Planning a feature, refactor, or risky change.
+- Reviewing changes and identifying test gaps.
+- Debugging a dependency or architecture issue.
+- Handing an approved session summary to the next agent.
 
 ## When NOT to Use
 
-- **Trivial scripts** (<20 files) — the overhead exceeds the value
-- **One-off code generation** — no existing codebase to analyze
-- **Binary-only repos** — TokenCap analyzes source code, not compiled output
-- **When you need real-time collaboration** — TokenCap is local-first, not a server
-
----
+- A trivial repository with fewer than roughly 20 source files.
+- One-off code generation with no existing repository to inspect.
+- Binary-only projects.
+- A workflow requiring a hosted collaboration service; TokenCap is local-first.
 
 ## Quick Start
 
-### Step 1: Generate Intelligence
+### Step 1: Build intelligence
 
 ```bash
-# Navigate to your project root
-cd /path/to/your/project
-
-# Generate the intelligence snapshot
+cd /path/to/project
 tokencap make
 ```
 
-This creates `.tokencap/` with:
-```
-.tokencap/
-├── snapshot.md          # Token-budgeted project overview
-├── graph/               # Dependency graph and clusters
-├── brain/               # Knowledge base (patterns, risks)
-├── agent/               # AI onboarding docs
-│   ├── START_HERE.md    # Entry point for agents
-│   └── allowed-context.json  # File relevance map
-├── memory/              # Developer notes and decisions
-└── savings.json         # Token savings metrics
-```
+For a full clean rebuild, use `tokencap make --rebuild`.
 
-### Step 2: Load Intelligence
+### Step 2: Read the entry point
 
-**Option A: Read the entry point**
-```
-Read .tokencap/agent/START_HERE.md
-```
+Read `.tokencap/agent/START_HERE.md`, then use `.tokencap/agent/allowed-context.json` to select task-relevant files. Do not scan the repository broadly unless this generated context is insufficient.
 
-**Option B: Use MCP tools** (if MCP server is running)
-```bash
-tokencap serve  # Start the MCP server
-```
+### Step 3: Query only what is needed
 
-Then use MCP tools: `overview`, `impact`, `analyze`, `explore`, `verify`
-
-**Option C: Use the CLI directly**
 ```bash
 tokencap ask "How does authentication work?"
-tokencap impact src/auth.js:validateToken
-tokencap analyze risk
+tokencap ask impact src/auth/token.js:validateToken
+tokencap analyze review
 ```
 
-### Step 3: Apply Intelligence
+### Step 4: Use MCP when an agent host supports it
 
-Use the generated context to:
-- Make informed code changes
-- Identify affected files before editing
-- Understand architecture before adding features
-- Review changes with full context
+```bash
+tokencap serve --mcp
+tokencap serve --mcp --init --client codex
+```
 
----
+`tokencap serve` without `--mcp` starts the local browser Companion bridge, not the MCP server.
 
 ## Core Workflows
 
 ### Workflow 1: New Codebase Onboarding
 
-```
-START
-  │
-  ▼
-Is .tokencap/ present?
-  ├── NO → Run `tokencap make`
-  │         │
-  │         ▼
-  │       Read .tokencap/agent/START_HERE.md
-  │         │
-  │         ▼
-  │       Check allowed-context.json for relevant files
-  │
-  └── YES → Check freshness with `tokencap health`
-             │
-             ├── FRESH (< 24h old) → Use existing intelligence
-             │
-             └── STALE (> 24h old) → Run `tokencap make --force`
-                                       │
-                                       ▼
-                                     Use refreshed intelligence
+```text
+1. Run tokencap make.
+2. Read .tokencap/agent/START_HERE.md.
+3. Select relevant files through allowed-context.json.
+4. Use tokencap ask for a focused architecture question.
+5. Read only the returned files before editing.
 ```
 
 ### Workflow 2: Code Review
 
 ```bash
-# 1. Analyze the changes
 tokencap analyze review
-
-# 2. Check risk score
 tokencap analyze risk
-
-# 3. Identify impact
-tokencap impact src/changed-file.js
-
-# 4. Find test gaps
+tokencap ask impact src/changed-file.js:changedSymbol
 tokencap analyze tests --gaps
-
-# 5. Review with context
-# The agent now has: risk score, impact analysis, test gaps, review checklist
 ```
+
+Treat findings as evidence and verify uncertain conclusions in source. Review packets are advisory; they are not compliance verdicts.
 
 ### Workflow 3: Refactoring
 
 ```bash
-# 1. Get suggestions
-tokencap refactor suggest
-
-# 2. Preview a specific suggestion
-tokencap refactor preview <suggestion-id>
-
-# 3. Apply safely (dry-run by default)
-tokencap refactor apply <suggestion-id>
-
-# 4. Verify
-npm test
+tokencap ask impact src/module.js:targetSymbol
+tokencap analyze refactor
+tokencap analyze tests --gaps
 ```
+
+Inspect the plan and test scope before applying source edits. TokenCap should guide decisions, never silently rewrite a repository.
 
 ### Workflow 4: Debugging
 
 ```bash
-# 1. Understand the failing area
-tokencap ask "How does [failing feature] work?"
-
-# 2. Trace dependencies
-tokencap impact src/failing-module.js
-
-# 3. Check for related risks
-tokencap analyze risk
-
-# 4. Find similar patterns
-tokencap explore "similar to [pattern]"
+tokencap ask "How does the failing feature work?"
+tokencap ask impact src/failing-module.js:failingSymbol
+tokencap analyze debug
 ```
 
----
+### Workflow 5: Session Handoff
+
+```bash
+tokencap serve session save --summary "what changed" --files src/example.js
+tokencap serve session list
+tokencap serve session handoff
+```
+
+Captured sessions remain staged until explicitly approved; do not treat raw browser conversations as durable memory.
 
 ## MCP Tools Reference
 
-When the MCP server is running (`tokencap serve`), use these tools:
+Start MCP with `tokencap serve --mcp`. Use the host's MCP client to call tools with the `tokencap_` prefix:
 
-| Tool | What It Does | When to Use |
-|------|-------------|-------------|
-| `overview` | Project summary, tech stack, architecture | Starting work, orientation |
-| `impact` | Analyze change impact (direct + transitive) | Before editing, review |
-| `analyze` | Batched analysis (risk, review, tests) | Comprehensive review |
-| `explore` | Search files by content, patterns, names | Finding relevant code |
-| `verify` | Constitution checks, architecture drift | Quality gates |
-| `improve` | Refactoring suggestions, code smells | Planning improvements |
-
-### Tool Usage Patterns
-
-**Before making changes:**
-```
-impact(file) → understand blast radius
-analyze(file) → get risk + review checklist
-```
-
-**When exploring unfamiliar code:**
-```
-overview() → understand project structure
-explore(query) → find relevant files
-```
-
-**During code review:**
-```
-analyze(changedFiles) → risk + tests + review
-verify() → check constitution compliance
-```
-
----
+| Tool | Use |
+| --- | --- |
+| `tokencap_overview` | Project orientation, stack, risks, and freshness. |
+| `tokencap_files` | Graph-ranked files relevant to a task. |
+| `tokencap_search` | Cross-layer intelligence search. |
+| `tokencap_impact` | Proposed-change blast radius. |
+| `tokencap_review` | Evidence-backed local review packet. |
+| `tokencap_verify` | Relevant test, build, and lint guidance. |
+| `tokencap_execution` | Execution-contract guidance for the current task. |
 
 ## CLI Commands Reference
 
-| Command | What It Does | Example |
-|---------|-------------|---------|
-| `tokencap make` | Generate intelligence snapshot | `tokencap make` |
-| `tokencap make --force` | Regenerate (ignore cache) | `tokencap make --force` |
-| `tokencap make --watch` | Auto-regenerate on file changes | `tokencap make --watch` |
-| `tokencap health` | Check intelligence freshness | `tokencap health` |
-| `tokencap ask <question>` | Query the intelligence | `tokencap ask "auth flow"` |
-| `tokencap impact <file>` | Analyze change impact | `tokencap impact src/auth.js` |
-| `tokencap analyze risk` | Repository risk assessment | `tokencap analyze risk` |
-| `tokencap analyze review` | Generate review packet | `tokencap analyze review` |
-| `tokencap analyze tests` | Test mapping and gaps | `tokencap analyze tests --gaps` |
-| `tokencap refactor suggest` | Get refactoring suggestions | `tokencap refactor suggest` |
-| `tokencap serve` | Start MCP server | `tokencap serve` |
-| `tokencap serve --daemon` | Start MCP server (background) | `tokencap serve --daemon` |
-| `tokencap serve --stop` | Stop MCP server | `tokencap serve --stop` |
-| `tokencap stats` | View token savings | `tokencap stats` |
+TokenCap v2.8+ has seven core commands:
 
----
+| Command | Purpose |
+| --- | --- |
+| `tokencap make` | Build or refresh repository intelligence. |
+| `tokencap ask <query>` | Create a task-scoped context pack or query the brain/impact graph. |
+| `tokencap analyze <tool>` | Run review, tests, risk, security, refactor, and related analysis. |
+| `tokencap serve` | Run the browser Companion bridge; add `--mcp` for the MCP server. |
+| `tokencap update` | Check for and install TokenCap updates. |
+| `tokencap help` | Show command help. |
+| `tokencap version` | Print the installed version. |
 
-## Intelligence Artifacts
-
-### snapshot.md
-Token-budgeted project overview. Contains:
-- Project metadata (name, language, framework)
-- File manifest (most important files ranked)
-- Git snapshot (recent changes)
-- Architecture summary
-
-### graph/
-Dependency graph and clusters. Contains:
-- `summary.md` — Human-readable graph overview
-- `clusters.json` — Louvain-detected communities
-- `graph.html` — Interactive visualization
-
-### brain/
-Knowledge base. Contains:
-- `knowledge.json` — Patterns, risks, rules
-- `clusters.json` — Code organization
-- `timeline.json` — Development history
-
-### agent/
-AI onboarding docs. Contains:
-- `START_HERE.md` — Entry point for agents
-- `allowed-context.json` — File relevance map
-- `agent.json` — Machine-readable intelligence
-- `execution-contract/` — Behavior constraints
-
----
+Legacy top-level commands remain compatibility aliases, but agents should use the core command forms above in new instructions.
 
 ## Decision Trees
 
-### Should I regenerate intelligence?
+### Should intelligence be rebuilt?
 
-```
-Is .tokencap/ present?
-├── NO → Yes, run `tokencap make`
-└── YES
-    │
-    Has the codebase changed significantly?
-    ├── YES (>10% files changed) → Yes, run `tokencap make --force`
-    └── NO
-        │
-        Is intelligence > 24 hours old?
-        ├── YES → Probably, run `tokencap make`
-        └── NO → No, use existing
+```text
+No .tokencap/ directory?  Run tokencap make.
+Existing intelligence but substantial repository drift?  Run tokencap make --rebuild.
+Recent, relevant intelligence?  Use it and avoid a broad scan.
 ```
 
-### Should I use MCP or CLI?
+### MCP or CLI?
 
+```text
+Agent host supports MCP?  Start tokencap serve --mcp and query tools on demand.
+Need a terminal artifact or a one-off answer?  Use tokencap ask or tokencap analyze.
+Need browser-chat context?  Start tokencap serve without --mcp.
 ```
-Do you need real-time queries?
-├── YES → Use MCP (`tokencap serve`)
-│         │
-│         └── Is the server running?
-│             ├── YES → Use MCP tools
-│             └── NO → Run `tokencap serve` first
-│
-└── NO
-    │
-    Do you need batch analysis?
-    ├── YES → Use CLI (`tokencap analyze`, `tokencap impact`)
-    └── NO → Use CLI for simple queries (`tokencap ask`)
-```
-
-### How detailed should my analysis be?
-
-```
-What are you doing?
-├── Quick orientation → `overview` tool or `tokencap ask`
-├── Code review → `analyze` tool (risk + tests + review)
-├── Refactoring → `improve` tool or `tokencap refactor suggest`
-├── Debugging → `impact` tool + `tokencap ask`
-└── Architecture review → `verify` tool + graph analysis
-```
-
----
 
 ## Common Rationalizations
 
 | Rationalization | Reality |
-|----------------|---------|
-| "I'll just grep for what I need" | Grep finds text, not meaning. TokenCap finds architecture, dependencies, and risk. |
-| "My codebase is too small" | Under 20 files? Skip it. 20-100 files? The snapshot alone saves 10+ minutes of orientation. |
-| "I already know this codebase" | The next person won't. Generate intelligence for your future self and your team. |
-| "It takes too long to generate" | `tokencap make` on a 1000-file repo takes ~5 seconds. The intelligence saves hours. |
-| "I don't trust generated analysis" | TokenCap shows evidence, not opinions. Every finding has a source. Verify it yourself. |
-| "We have documentation" | Documentation rots. TokenCap generates from the actual code, always current. |
-| "I'll read the code myself" | You will. But you'll read the RIGHT code, not waste time on irrelevant files. |
-
----
+| --- | --- |
+| "I will just grep first." | Search text after the graph has selected a relevant scope. |
+| "I know this codebase." | The graph can reveal indirect dependents and stale assumptions. |
+| "More files means better context." | High-signal, bounded context is more useful than a repository dump. |
+| "The analyzer is always right." | Findings are evidence, not ground truth; inspect source before acting. |
 
 ## Red Flags
 
-Stop and regenerate if you see:
-
-- **Intelligence is stale** — `tokencap health` shows >24h old
-- **Missing files** — Intelligence doesn't cover files you're working on
-- **Wrong architecture** — Graph doesn't match what you see in the code
-- **Outdated risks** — Risk findings reference code that no longer exists
-- **Empty clusters** — Graph shows no meaningful organization
-
----
-
-## Anti-Patterns
-
-### BAD: Reading files without context
-```bash
-# Blindly reading files
-cat src/auth.js
-cat src/user.js
-cat src/api/routes.js
-# Wasted time reading irrelevant code
-```
-
-### GOOD: Using intelligence to find relevant files
-```bash
-# Get oriented first
-tokencap ask "authentication flow"
-# Then read only the relevant files
-cat src/auth/validateToken.js
-cat src/auth/middleware.js
-```
-
-### BAD: Refactoring without impact analysis
-```bash
-# Changing code without understanding blast radius
-vim src/utils.js  # Oops, 47 files depend on this
-```
-
-### GOOD: Analyze before changing
-```bash
-# Understand impact first
-tokencap impact src/utils.js
-# Shows: 47 dependents, 3 boundary crossings, HIGH risk
-# Now make informed decisions
-```
-
----
+- Generated intelligence is missing, stale, or does not mention the current area.
+- The graph omits a file known to be central to the task.
+- A risk or impact claim lacks source evidence.
+- The repository changed materially after the last build.
 
 ## Verification
 
-After using TokenCap, verify:
-
-- [ ] Intelligence is fresh (`tokencap health` shows <24h)
-- [ ] You understand the project architecture
-- [ ] You know which files are most important
-- [ ] You understand the dependency graph
-- [ ] You've identified risks before making changes
-- [ ] You have test coverage information
-- [ ] You can trace impact of your changes
-
----
-
-## Cross-References
-
-- For code review guidance, see `code-review-and-quality`
-- For debugging workflows, see `debugging-and-error-recovery`
-- For security analysis, see `security-and-hardening`
-- For performance concerns, see `performance-optimization`
-- For testing strategies, see `test-driven-development`
-- For architecture decisions, see `documentation-and-adrs`
-
----
-
-## Troubleshooting
-
-### Intelligence not generating
-```bash
-# Check for errors
-tokencap make 2>&1
-
-# Verify Node.js version (requires 18+)
-node --version
-
-# Check disk space
-df -h
-```
-
-### MCP server not responding
-```bash
-# Stop any existing server
-tokencap serve --stop
-
-# Start fresh
-tokencap serve
-
-# Test connection
-tokencap mcp --test
-```
-
-### Stale intelligence after code changes
-```bash
-# Force regeneration
-tokencap make --force
-
-# Or enable auto-regeneration
-tokencap make --watch
-```
-
-### Wrong file relevance
-```bash
-# Check what the intelligence thinks is relevant
-cat .tokencap/agent/allowed-context.json
-
-# Regenerate if needed
-tokencap make --force
-```
+- [ ] Intelligence exists and is fresh enough for the task.
+- [ ] `START_HERE.md` and `allowed-context.json` were read first.
+- [ ] The intended change's impact and test scope were considered.
+- [ ] Important decisions are captured through the staged session workflow when appropriate.
